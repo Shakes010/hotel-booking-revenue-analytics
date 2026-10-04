@@ -1,0 +1,119 @@
+// ===============================================================================
+// VERIFIED DAX MEASURES LIBRARY FOR HOTEL BOOKING & REVENUE ANALYTICS
+// Copy and paste into Power BI Desktop Model (MySQL Source: hotel_analytics_db)
+// ===============================================================================
+
+// -------------------------------------------------------------------------------
+// 1. BOOKING METRICS
+// -------------------------------------------------------------------------------
+
+Total Bookings = COUNTROWS(FactBookings)
+
+Confirmed Bookings = 
+CALCULATE(
+    COUNTROWS(FactBookings),
+    FactBookings[status] = "confirmed"
+)
+
+Checked-In Bookings = 
+CALCULATE(
+    COUNTROWS(FactBookings),
+    FactBookings[status] = "checked_in"
+)
+
+Checked-Out Bookings = 
+CALCULATE(
+    COUNTROWS(FactBookings),
+    FactBookings[status] = "checked_out"
+)
+
+Cancelled Bookings = 
+CALCULATE(
+    COUNTROWS(FactBookings),
+    FactBookings[status] = "cancelled"
+)
+
+Cancellation Rate % = 
+DIVIDE([Cancelled Bookings], [Total Bookings], 0) * 100
+
+// -------------------------------------------------------------------------------
+// 2. REVENUE METRICS
+// -------------------------------------------------------------------------------
+
+// Total Valid Revenue (Excludes Cancelled Bookings)
+Total Revenue = 
+CALCULATE(
+    SUM(FactBookings[total_amount]),
+    FactBookings[status] IN {"confirmed", "checked_in", "checked_out"}
+)
+
+// Average Booking Value
+Average Booking Value = 
+DIVIDE(
+    [Total Revenue],
+    CALCULATE(COUNTROWS(FactBookings), FactBookings[status] IN {"confirmed", "checked_in", "checked_out"}),
+    0
+)
+
+// Revenue Lost to Guest Cancellations
+Revenue Lost to Cancellations = 
+SUM(FactCancellations[refund_amount])
+
+// Cancellation Fees Retained by Hotel
+Retained Cancellation Fees = 
+SUM(FactCancellations[cancellation_fee])
+
+// Month-over-Month (MoM) Revenue Growth %
+Revenue MoM Growth % = 
+VAR CurrentMonthRev = [Total Revenue]
+VAR PrevMonthRev = CALCULATE([Total Revenue], DATEADD(DimDate[Date], -1, MONTH))
+RETURN
+DIVIDE(CurrentMonthRev - PrevMonthRev, PrevMonthRev, 0) * 100
+
+// Year-over-Year (YoY) Revenue Growth %
+Revenue YoY Growth % = 
+VAR CurrentYearRev = [Total Revenue]
+VAR PrevYearRev = CALCULATE([Total Revenue], DATEADD(DimDate[Date], -1, YEAR))
+RETURN
+DIVIDE(CurrentYearRev - PrevYearRev, PrevYearRev, 0) * 100
+
+// -------------------------------------------------------------------------------
+// 3. HOTEL PERFORMANCE METRICS
+// -------------------------------------------------------------------------------
+
+// Total Inventory Rooms Count
+Total Inventory Rooms = DISTINCTCOUNT(DimRoom[id])
+
+// Operational Rooms (Excluding Maintenance Rooms)
+Operational Rooms = 
+CALCULATE(
+    DISTINCTCOUNT(DimRoom[id]),
+    DimRoom[status] <> "maintenance"
+)
+
+// Total Available Room Nights in Selected Date Range
+Available Room Nights = 
+[Operational Rooms] * COUNTROWS(DimDate)
+
+// Total Occupied Room Nights (Sold Nights)
+Occupied Room Nights = 
+CALCULATE(
+    SUM(FactBookings[nights_stayed]),
+    FactBookings[status] IN {"confirmed", "checked_in", "checked_out"}
+)
+
+// Occupancy Rate (%)
+Occupancy Rate % = 
+DIVIDE([Occupied Room Nights], [Available Room Nights], 0) * 100
+
+// Average Daily Rate (ADR = Total Valid Room Revenue / Sold Room Nights)
+ADR = 
+DIVIDE([Total Revenue], [Occupied Room Nights], 0)
+
+// Revenue Per Available Room (RevPAR = Occupancy % * ADR)
+RevPAR = 
+([Occupancy Rate %] / 100) * [ADR]
+
+// Average Lead Time in Days (Booking Date to Check-In Date)
+Average Lead Time Days = 
+AVERAGE(FactBookings[lead_time_days])

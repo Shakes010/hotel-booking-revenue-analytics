@@ -1,0 +1,33 @@
+# Python / Environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Node / Frontend Build
+node_modules/
+dist/
+build/
+.npm
+
+# Secrets & Environment Configurations
+.env
+.env.*
+
+# IDEs & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & Local Fallback DBs
+*.log
+*.sqlite
+*.sqlite3
+*.db
+rollback_*.json
+
+# Cache & Coverage
+.pytest_cache/
+coverage/
